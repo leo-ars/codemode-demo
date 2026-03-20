@@ -19,7 +19,7 @@ import type { DemoMode } from "../types";
 interface Props { messages: UIMessage[]; mode: DemoMode; busy: boolean; }
 
 export function MessageList({ messages, mode, busy }: Props) {
-  const color = mode === "mcp" ? "var(--cf-orange)" : "#7C3AED";
+  const color = mode === "mcp" ? "#FF4801" : "#7C3AED";
   return (
     <div className="flex flex-col gap-5 w-full">
       {messages.map((msg, i) => (
@@ -33,7 +33,7 @@ export function MessageList({ messages, mode, busy }: Props) {
 /* ── Message ─────────────────────────────────────────────── */
 function Msg({ msg, mode, latest }: { msg: UIMessage; mode: DemoMode; latest: boolean }) {
   const isUser = msg.role === "user";
-  const color  = mode === "mcp" ? "var(--cf-orange)" : "#7C3AED";
+  const color  = mode === "mcp" ? "#FF4801" : "#7C3AED";
   const icon   = mode === "mcp" ? "⚡" : "◆";
 
   if (isUser) {

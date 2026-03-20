@@ -28,7 +28,7 @@ export function ChatPanel({ mode, agent, isSplit, onMetrics, onSuggestion, onRea
   const { messages, sendMessage, status, switchMode } = agent;
   const busy  = status === "streaming" || status === "submitted";
   const isMcp = mode === "mcp";
-  const color = isMcp ? "var(--cf-orange)" : "#7C3AED";
+  const color = isMcp ? "#FF4801" : "#7C3AED";
   const label = isMcp ? "MCP" : "Codemode";
   const icon  = isMcp ? "⚡" : "◆";
 
