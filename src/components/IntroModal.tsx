@@ -115,6 +115,12 @@ export function IntroModal({ forceOpen, onClose }: Props) {
           {/* Credits */}
           <div style={{ marginBottom: 20 }}>
             <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--cf-text-subtle)", marginBottom: 8 }}>
+              Made by
+            </p>
+            <div style={{ marginBottom: 10 }}>
+              <CreditLink name="Leo Arsenin" desc="Built this demo" url="https://github.com/leo-ars" />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--cf-text-subtle)", marginBottom: 8 }}>
               Inspired by
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

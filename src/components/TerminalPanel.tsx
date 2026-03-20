@@ -85,9 +85,15 @@ export function ChatPanel({ mode, agent, isSplit, onMetrics, onSuggestion, onRea
   }, [input, busy, sendMessage]);
 
   const handleSuggestion = useCallback((text: string) => {
-    if (isSplit && onSuggestion) onSuggestion(text);
-    else sendMessage({ text });
-  }, [isSplit, onSuggestion, sendMessage]);
+    if (isSplit && onSuggestion) {
+      // In split mode: fill the shared input bar and let user submit
+      onSuggestion(text);
+    } else {
+      // In single mode: fill the local input and focus it
+      setInput(text);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [isSplit, onSuggestion]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--cf-bg-page)" }}>

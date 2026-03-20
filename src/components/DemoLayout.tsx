@@ -14,12 +14,7 @@ interface Props {
 const ZERO: TokenMetrics = { inputTokens: 0, outputTokens: 0, totalTokens: 0, durationMs: 0 };
 
 export const SUGGESTIONS = [
-  { label: "Simple",  text: "Show me the sprint summary — open criticals and what's in progress" },
-  { label: "Simple",  text: "Search for all tickets about the login bug and show me their status" },
   { label: "Simple",  text: "List the 5 most recent tickets" },
-  { label: "Complex", text: "Give me a full sprint health report: stats by priority, all critical open tickets, and what's in progress. Then escalate every high-priority open ticket to critical." },
-  { label: "Complex", text: "Find all open login bug tickets, mark them in progress, add a comment 'Investigating root cause' to each, then show me the updated list." },
-  { label: "Complex", text: "Create 3 new tickets for this sprint (a critical security issue, a high-priority perf bug, and a medium UI fix), mark the security one in progress, then show me all open critical tickets." },
   { label: "Complex", text: "End-of-sprint triage: get the sprint summary, escalate all open critical tickets to in_progress, search for any open tickets related to 'auth' or 'login' and add a comment 'Flagged for priority review by sprint lead' to each, bulk-resolve all in_progress tickets with low or medium priority, create a new ticket titled 'Post-sprint retrospective: review SLA breaches' with high priority, then return a final report: how many tickets changed status, how many comments were added, and the ID of the new ticket." },
 ];
 
@@ -72,6 +67,12 @@ export function DemoLayout({ viewMode, onViewModeChange }: Props) {
     codeAgent.sendMessage({ text });
   }, [splitBusy, mcpAgent, codeAgent]);
 
+  // Fill the shared split input bar (used by ChatPanel suggestion buttons in split mode)
+  const fillSplit = useCallback((text: string) => {
+    setSplitInput(text);
+    splitRef.current?.focus();
+  }, []);
+
   const onSplitSubmit = useCallback((e: FormEvent) => {
     e.preventDefault();
     const text = splitInput.trim();
@@ -102,12 +103,12 @@ export function DemoLayout({ viewMode, onViewModeChange }: Props) {
               width: isSplit ? "50%" : "100%",
               borderRight: isSplit ? "1px solid var(--cf-border)" : "none",
             }}>
-              <ChatPanel key={`mcp-${resetKey}`} mode="mcp" agent={mcpAgent} isSplit={isSplit} onMetrics={addMcpMetrics} onSuggestion={isSplit ? fireBoth : undefined} onReady={() => setMcpReady(true)} />
+              <ChatPanel key={`mcp-${resetKey}`} mode="mcp" agent={mcpAgent} isSplit={isSplit} onMetrics={addMcpMetrics} onSuggestion={isSplit ? fillSplit : undefined} onReady={() => setMcpReady(true)} />
             </div>
           )}
           {(isSplit || isSingleCode) && (
             <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", width: isSplit ? "50%" : "100%" }}>
-              <ChatPanel key={`code-${resetKey}`} mode="codemode" agent={codeAgent} isSplit={isSplit} onMetrics={addCodeMetrics} onSuggestion={isSplit ? fireBoth : undefined} onReady={() => setCodeReady(true)} />
+              <ChatPanel key={`code-${resetKey}`} mode="codemode" agent={codeAgent} isSplit={isSplit} onMetrics={addCodeMetrics} onSuggestion={isSplit ? fillSplit : undefined} onReady={() => setCodeReady(true)} />
             </div>
           )}
         </div>
@@ -131,7 +132,7 @@ export function DemoLayout({ viewMode, onViewModeChange }: Props) {
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {SUGGESTIONS.map((s, i) => (
-                  <SplitPill key={i} s={s} onSend={fireBoth} busy={splitBusy} />
+                  <SplitPill key={i} s={s} onFill={(text) => { setSplitInput(text); splitRef.current?.focus(); }} busy={splitBusy} />
                 ))}
               </div>
             </div>
@@ -176,13 +177,13 @@ export function DemoLayout({ viewMode, onViewModeChange }: Props) {
   );
 }
 
-function SplitPill({ s, onSend, busy }: { s: { label: string; text: string }; onSend: (t: string) => void; busy: boolean }) {
+function SplitPill({ s, onFill, busy }: { s: { label: string; text: string }; onFill: (t: string) => void; busy: boolean }) {
   const [hovered, setHovered] = useState(false);
   const isComplex = s.label === "Complex";
   const color = isComplex ? "#7C3AED" : "var(--cf-orange)";
   return (
     <button
-      onClick={() => !busy && onSend(s.text)}
+      onClick={() => !busy && onFill(s.text)}
       disabled={busy}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
