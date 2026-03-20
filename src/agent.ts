@@ -392,18 +392,6 @@ codemode.list_tickets({})`;
       });
     }
 
-    if (url.pathname.endsWith("/warmup") && request.method === "POST") {
-      // Pre-connect the MCP server so the first chat message doesn't pay the
-      // cold-start cost. Safe to call multiple times — guarded by getAITools().
-      if (Object.keys(this.mcp.getAITools()).length === 0) {
-        try {
-          await this.addMcpServer("tickets", this.env.TICKET_MCP);
-          await this.setState({ ...this.state, mcpConnected: true });
-        } catch { /* ignore — will retry on first message */ }
-      }
-      return Response.json({ success: true, mcpConnected: this.state.mcpConnected });
-    }
-
     if (url.pathname.endsWith("/clear") && request.method === "POST") {
       await this.saveMessages([]);
       await this.setState({
