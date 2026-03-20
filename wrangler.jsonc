@@ -57,9 +57,15 @@
     "ORIGIN": "https://codemode-demo.leoarsenin.workers.dev"
   },
   "observability": {
+    "enabled": true,
     "logs": {
       "enabled": true,
-      "invocation_logs": true
+      "invocation_logs": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
     }
   },
   // Raise DO CPU time from the default 30s to 5 minutes.
