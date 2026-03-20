@@ -189,8 +189,8 @@ function McpCard({ toolName, input, output, color, done, mode, isErr }: {
           {/* Output */}
           {done && parsedOutput !== undefined && (
             <div className="flex flex-col gap-1">
-              <RowLabel color="var(--cf-success)" dot>Output</RowLabel>
-              <JsonBlock content={parsedOutput} borderColor="rgba(22,163,74,0.22)" textColor="var(--cf-success)" />
+              <RowLabel color={color} dot>Output</RowLabel>
+              <JsonBlock content={parsedOutput} borderColor={color + "30"} textColor={color} />
             </div>
           )}
         </div>
@@ -214,15 +214,19 @@ function CodemodeCard({ input, output, color, done, isErr }: {
   const logs    = (output?.logs ?? []) as string[];
   const retVal  = output?.result;
 
+  const borderColor  = isErr ? "#ef444440" : `${color}35`;
+  const headerBg     = isErr ? "#ef444410" : color + "0e";
+  const headerBorder = isErr ? "#ef444425" : `${color}20`;
+
   return (
     <div
       className="rounded-xl overflow-hidden"
-      style={{ border: `1px solid ${color}35`, background: "var(--cf-bg-200)" }}
+      style={{ border: `1px solid ${borderColor}`, background: "var(--cf-bg-200)" }}
     >
       {/* Top bar */}
       <div
         className="flex items-center gap-2 px-3 py-2.5"
-        style={{ background: color + "0e", borderBottom: `1px solid ${color}20` }}
+        style={{ background: headerBg, borderBottom: `1px solid ${headerBorder}` }}
       >
         <StatusDot done={done} />
         <span className="font-semibold text-xs" style={{ color }}>Generated JavaScript</span>
@@ -267,7 +271,7 @@ function CodemodeCard({ input, output, color, done, isErr }: {
           <SectionToggle
             label={done ? "Execution" : "Executing…"}
             icon="▶"
-            iconColor="var(--green)"
+            iconColor={color}
             open={traceOpen}
             onToggle={() => setTraceOpen(o => !o)}
           />
@@ -275,10 +279,10 @@ function CodemodeCard({ input, output, color, done, isErr }: {
             <div className="px-3 pb-3 flex flex-col gap-2">
               {logs.length > 0 && (
                 <div className="flex flex-col gap-1">
-                  <RowLabel color="var(--text-3)">console</RowLabel>
+                  <RowLabel color="var(--cf-text-subtle)">console</RowLabel>
                   <pre
                     className="text-[11px] p-3 rounded-lg overflow-x-auto leading-relaxed m-0"
-                    style={{ background: "var(--cf-bg-300)", border: "1px solid var(--cf-border)", color: "var(--cf-text-muted)", fontFamily: "var(--font-mono)" }}
+                    style={{ background: "var(--cf-bg-300)", border: `1px solid ${color}18`, color: "var(--cf-text-muted)", fontFamily: "var(--font-mono)" }}
                   >
                     {logs.join("\n")}
                   </pre>
@@ -286,8 +290,8 @@ function CodemodeCard({ input, output, color, done, isErr }: {
               )}
               {done && retVal !== undefined && (
                 <div className="flex flex-col gap-1 pt-1">
-                  <RowLabel color="var(--green)">↩ Return value</RowLabel>
-                  <JsonBlock content={retVal} borderColor="rgba(22,163,74,0.25)" textColor="var(--cf-success)" />
+                  <RowLabel color={color} dot>↩ Return value</RowLabel>
+                  <JsonBlock content={retVal} borderColor={color + "30"} textColor={color} />
                 </div>
               )}
             </div>
