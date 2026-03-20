@@ -1,0 +1,66 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "codemode-demo",
+  // Set your Cloudflare account ID here, or use CLOUDFLARE_ACCOUNT_ID env var
+  // Run: npx wrangler whoami to find your account ID
+  "account_id": "d5e3535b0d5fe2b602d3816b6df61560",
+  "main": "src/server.ts",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat", "experimental"],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS"
+  },
+  "worker_loaders": [
+    {
+      "binding": "LOADER"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DEMO_AGENT",
+        "class_name": "DemoAgent"
+      },
+      {
+        "name": "TICKET_MCP",
+        "class_name": "TicketMCP"
+      }
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "codemode-tickets",
+      "database_id": "9a90b4d6-5734-405e-9b48-013628e55435"
+    }
+  ],
+  "ai": {
+    "binding": "AI",
+    // remote: true allows Workers AI to work in local dev without a remote proxy session
+    "remote": true
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["DemoAgent", "TicketMCP"]
+    }
+  ],
+  "vars": {
+    // Self-referential origin so DemoAgent can HTTP-connect to TicketMCP.
+    // Override this with your deployed workers.dev URL for production.
+    "ORIGIN": "https://codemode-demo.leoarsenin.workers.dev"
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
+  // Raise DO CPU time from the default 30s to 5 minutes.
+  // Multi-step MCP triage (15+ inference + tool round-trips) burns real CPU on
+  // JSON serialization and stream processing — the default 30s is too tight.
+  "limits": {
+    "cpu_ms": 300000
+  }
+}
