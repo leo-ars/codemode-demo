@@ -17,6 +17,9 @@ export function useTicketAgent(agentId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: newMode }),
       });
+      // Warmup: pre-connect MCP so the first message doesn't pay cold-start cost.
+      // Fire-and-forget — don't block the UI on this.
+      fetch(`/agents/demo-agent/${agentId}/warmup`, { method: "POST" }).catch(() => {});
     } catch (e) {
       console.error("Failed to switch mode:", e);
     }
