@@ -33,6 +33,11 @@
       "binding": "DB",
       "database_name": "codemode-tickets",
       "database_id": "9a90b4d6-5734-405e-9b48-013628e55435"
+    },
+    {
+      "binding": "DB_CODE",
+      "database_name": "codemode-tickets-code",
+      "database_id": "b47c33f6-118c-4b42-8e06-a4d8a079126b"
     }
   ],
   "ai": {

@@ -191,6 +191,9 @@ export class DemoAgent extends AIChatAgent<Cloudflare.Env, DemoState> {
     options?: Parameters<AIChatAgent["onChatMessage"]>[1]
   ) {
     const mode = this.state.mode ?? "mcp";
+    // Each agent gets its own isolated D1 database so MCP and Codemode
+    // never see each other's writes during a simultaneous split-view run.
+    const db = this.name === "demo-codemode" ? this.env.DB_CODE : this.env.DB;
     const workersai = createWorkersAI({ binding: this.env.AI });
 
     // GLM-4.7-flash for both modes.
@@ -328,9 +331,8 @@ When creating tickets, confirm what was created with the ticket ID.`;
       }).toUIMessageStreamResponse();
     }
 
-    // Codemode: tools call D1 directly — same DB as MCP, guaranteed consistency.
-    await initDb(this.env.DB);
-    const ticketTools = buildTicketTools(this.env.DB);
+    await initDb(db);
+    const ticketTools = buildTicketTools(db);
 
     // Raise executor timeout from 30s default to 120s — the full triage prompt
     // chains 8+ tool calls inside a single JS function and can take >30s to run.
@@ -404,7 +406,8 @@ codemode.list_tickets({})`;
     }
 
     if (url.pathname.endsWith("/reset-db") && request.method === "POST") {
-      await resetDb(this.env.DB);
+      const db = this.name === "demo-codemode" ? this.env.DB_CODE : this.env.DB;
+      await resetDb(db);
       await this.saveMessages([]);
       await this.setState({
         ...this.state,
