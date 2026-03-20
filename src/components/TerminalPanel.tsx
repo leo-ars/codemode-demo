@@ -148,9 +148,9 @@ export function ChatPanel({ mode, agent, isSplit, onMetrics, onSuggestion, onRea
               </span>
             ) : null;
           })()}
-          {messages.length > 0 && (
+          {messages.filter(m => m.role === "user").length > 0 && (
             <span style={{ fontSize: 10, color: "var(--cf-text-subtle)", fontVariantNumeric: "tabular-nums" }}>
-              {Math.ceil(messages.length / 2)} turn{messages.length > 2 ? "s" : ""}
+              {messages.filter(m => m.role === "user").length} turn{messages.filter(m => m.role === "user").length > 1 ? "s" : ""}
             </span>
           )}
         </div>
@@ -159,11 +159,25 @@ export function ChatPanel({ mode, agent, isSplit, onMetrics, onSuggestion, onRea
       {/* Messages */}
       <div style={{ flex: 1, overflowY: "auto" }}>
         <div style={{ display: "flex", flexDirection: "column", padding: 16, gap: 4, minHeight: "100%" }}>
-          {messages.length === 0 ? (
-            <WelcomeScreen mode={mode} isSplit={isSplit} onSend={handleSuggestion} color={color} ready={ready} />
-          ) : (
-            <MessageList messages={messages} mode={mode} busy={busy} />
-          )}
+          {(() => {
+            // Filter out empty assistant messages (no parts or all-empty text parts)
+            // that can appear as stale shells after a Reset before the server clears.
+            const visibleMessages = messages.filter(m => {
+              if (m.role === "user") return true;
+              const parts = m.parts ?? [];
+              return parts.some(p => {
+                const t = (p as { type: string }).type;
+                if (t === "text") return !!((p as { text: string }).text?.trim());
+                if (t?.startsWith("tool-")) return true;
+                return false;
+              });
+            });
+            return visibleMessages.length === 0 ? (
+              <WelcomeScreen mode={mode} isSplit={isSplit} onSend={handleSuggestion} color={color} ready={ready} />
+            ) : (
+              <MessageList messages={visibleMessages} mode={mode} busy={busy} />
+            );
+          })()}
           <div ref={messagesEndRef} />
         </div>
       </div>
