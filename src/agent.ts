@@ -306,21 +306,32 @@ When creating tickets, confirm what was created with the ticket ID.`;
     };
 
     if (mode === "mcp") {
-      // Connect lazily here (not in onStart) because addMcpServer requires
-      // this.name to be set, which is only guaranteed once a named request arrives.
-      // addMcpServer is idempotent — safe to call on every message.
+      // Connect lazily — addMcpServer needs this.name which is only guaranteed
+      // after a named fetch() has completed (not always in onStart on cold RPC wake).
       if (Object.keys(this.mcp.getAITools()).length === 0) {
-        await this.addMcpServer("tickets", this.env.TICKET_MCP);
+        try {
+          await this.addMcpServer("tickets", this.env.TICKET_MCP);
+        } catch {
+          // TicketMCP may be cold — its onStart races with the RPC wake-up.
+          // Wait briefly and retry once.
+          await new Promise(r => setTimeout(r, 1500));
+          try {
+            await this.addMcpServer("tickets", this.env.TICKET_MCP);
+          } catch { /* handled below */ }
+        }
       }
 
       const mcpTools = this.mcp.getAITools();
 
-      // If still no tools, connection failed — refuse rather than hallucinate.
+      // If still no tools after retry, stream a fixed warm-up message instead
+      // of a raw 503 — prevents the model from hallucinating a recovery plan.
       if (Object.keys(mcpTools).length === 0) {
-        return new Response(
-          JSON.stringify({ error: "MCP connection unavailable — tools not loaded. Please retry." }),
-          { status: 503, headers: { "Content-Type": "application/json" } }
-        );
+        return streamText({
+          model, messages: modelMessages,
+          system: `Respond with exactly this message and nothing else:
+"The MCP server is warming up after a cold start. Please send your message again in a few seconds."`,
+          onFinish: wrappedOnFinish, abortSignal: options?.abortSignal,
+        }).toUIMessageStreamResponse();
       }
 
       return streamText({
