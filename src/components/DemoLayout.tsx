@@ -42,12 +42,16 @@ export function DemoLayout({ viewMode, onViewModeChange }: Props) {
     setCodeReady(false);
     setMcpMetrics(ZERO);
     setCodeMetrics(ZERO);
+    // Clear client-side messages immediately so the UI feels instant
+    mcpAgent.clearHistory();
+    codeAgent.clearHistory();
+    // Reset DB + server-side message history, then remount panels.
+    // We await both before bumping resetKey so the new WebSocket connection
+    // syncs from an already-cleared server state (no stale messages coming back).
     await Promise.all([
       fetch("/agents/demo-agent/demo-mcp/reset-db",      { method: "POST" }),
       fetch("/agents/demo-agent/demo-codemode/reset-db", { method: "POST" }),
     ]);
-    mcpAgent.clearHistory();
-    codeAgent.clearHistory();
     setResetKey(k => k + 1);
   }, [mcpAgent, codeAgent]);
 
