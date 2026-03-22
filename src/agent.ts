@@ -180,34 +180,6 @@ export class DemoAgent extends AIChatAgent<Cloudflare.Env, DemoState> {
   // tool calls and the TicketMCP DO is cold.
   waitForMcpConnections = { timeout: 30_000 };
 
-  private mcpSessionId: string | null = null;
-
-  // Get or create a persistent MCP session ID via HTTP (like Rita's approach).
-  // This avoids the RPC binding entirely and the .name-not-set race condition.
-  private async getMcpSessionId(): Promise<string> {
-    if (this.mcpSessionId) return this.mcpSessionId;
-
-    const stored = await this.ctx.storage.get<string>("mcp-session-id");
-    if (stored) { this.mcpSessionId = stored; return stored; }
-
-    const mcpUrl = `${this.env.ORIGIN}/mcp`;
-    const response = await fetch(mcpUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {
-        protocolVersion: "2024-11-05", capabilities: {},
-        clientInfo: { name: "demo-mcp-agent", version: "1.0" },
-      }}),
-    });
-
-    const sessionId = response.headers.get("mcp-session-id");
-    if (!sessionId) throw new Error("Failed to get MCP session ID from /mcp");
-
-    this.mcpSessionId = sessionId;
-    await this.ctx.storage.put("mcp-session-id", sessionId);
-    return sessionId;
-  }
-
   async onStart() {}
 
   async onChatMessage(
@@ -330,13 +302,10 @@ When creating tickets, confirm what was created with the ticket ID.`;
     };
 
     if (mode === "mcp") {
-      // Connect via HTTP MCP (like Rita's approach) — avoids the RPC binding
-      // entirely and the .name-not-set race condition on cold DO wake-ups.
-      const sessionId = await this.getMcpSessionId();
-      await this.addMcpServer("tickets", `${this.env.ORIGIN}/mcp`, {
-        transport: { type: "streamable-http", headers: { "mcp-session-id": sessionId } },
-      });
-      await this.setState({ ...this.state, mcpConnected: true });
+      if (Object.keys(this.mcp.getAITools()).length === 0) {
+        await this.addMcpServer("tickets", this.env.TICKET_MCP);
+        await this.setState({ ...this.state, mcpConnected: true });
+      }
 
       const mcpTools = this.mcp.getAITools();
 
@@ -426,9 +395,6 @@ codemode.list_tickets({})`;
       const db = this.name === "demo-codemode" ? this.env.DB_CODE : this.env.DB;
       await resetDb(db);
       await this.saveMessages([]);
-      // Clear stored MCP session so next message gets a fresh connection
-      this.mcpSessionId = null;
-      await this.ctx.storage.delete("mcp-session-id");
       await this.removeMcpServer("tickets").catch(() => {});
       await this.setState({
         ...this.state,
