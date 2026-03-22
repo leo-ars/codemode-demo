@@ -140,14 +140,14 @@ export async function resetDb(db: D1Database): Promise<void> {
 export async function dbCreateTicket(
   db: D1Database,
   args: { title: string; description: string; priority?: string }
-): Promise<{ success: true; ticket: Ticket }> {
+): Promise<{ success: true; id: string; title: string; status: string; priority: string }> {
   const id  = newId();
   const now = new Date().toISOString();
   const priority = args.priority ?? "medium";
   await db.prepare(
     "INSERT INTO tickets (id, title, description, status, priority, created_at, updated_at) VALUES (?, ?, ?, 'open', ?, ?, ?)"
   ).bind(id, args.title, args.description, priority, now, now).run();
-  return { success: true, ticket: { id, title: args.title, description: args.description, status: "open", priority: priority as TicketPriority, created_at: now, updated_at: now } };
+  return { success: true, id, title: args.title, status: "open", priority };
 }
 
 export async function dbListTickets(
@@ -164,12 +164,12 @@ export async function dbListTickets(
 export async function dbListRecentTickets(
   db: D1Database,
   args: { limit?: number; status?: string }
-): Promise<{ success: true; count: number; tickets: Ticket[] }> {
+): Promise<{ success: true; count: number; tickets: Pick<Ticket, "id" | "title" | "status" | "priority" | "created_at">[] }> {
   const limit  = Math.min(args.limit ?? 10, 50);
   const status = args.status ?? "all";
   const { results } = status === "all"
-    ? await db.prepare("SELECT * FROM tickets ORDER BY created_at DESC LIMIT ?").bind(limit).all<Ticket>()
-    : await db.prepare("SELECT * FROM tickets WHERE status = ? ORDER BY created_at DESC LIMIT ?").bind(status, limit).all<Ticket>();
+    ? await db.prepare("SELECT id, title, status, priority, created_at FROM tickets ORDER BY created_at DESC LIMIT ?").bind(limit).all<Pick<Ticket, "id" | "title" | "status" | "priority" | "created_at">>()
+    : await db.prepare("SELECT id, title, status, priority, created_at FROM tickets WHERE status = ? ORDER BY created_at DESC LIMIT ?").bind(status, limit).all<Pick<Ticket, "id" | "title" | "status" | "priority" | "created_at">>();
   return { success: true, count: results.length, tickets: results };
 }
 
@@ -185,12 +185,11 @@ export async function dbGetTicket(
 export async function dbResolveTicket(
   db: D1Database,
   args: { id: string; resolution?: string }
-): Promise<{ success: true; ticket: Ticket; resolution: string } | { success: false; error: string }> {
+): Promise<{ success: true; id: string; status: string } | { success: false; error: string }> {
   const now = new Date().toISOString();
   const { meta } = await db.prepare("UPDATE tickets SET status = 'resolved', updated_at = ? WHERE id = ?").bind(now, args.id).run();
   if (meta.changes === 0) return { success: false, error: `Ticket ${args.id} not found` };
-  const ticket = await db.prepare("SELECT * FROM tickets WHERE id = ?").bind(args.id).first<Ticket>() as Ticket;
-  return { success: true, ticket, resolution: args.resolution ?? "Marked as resolved" };
+  return { success: true, id: args.id, status: "resolved" };
 }
 
 export async function dbUpdateTicketStatus(
@@ -342,14 +341,14 @@ export async function dbGetSprintSummary(db: D1Database): Promise<{
 export async function dbAddComment(
   db: D1Database,
   args: { id: string; body: string; author?: string }
-): Promise<{ success: true; comment: Comment } | { success: false; error: string }> {
+): Promise<{ success: true; id: string } | { success: false; error: string }> {
   const ticket = await db.prepare("SELECT id FROM tickets WHERE id = ?").bind(args.id).first();
   if (!ticket) return { success: false, error: `Ticket ${args.id} not found` };
   const cid    = "C-" + crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
   const now    = new Date().toISOString();
   const author = args.author ?? "agent";
   await db.prepare("INSERT INTO comments (id, ticket_id, author, body, created_at) VALUES (?, ?, ?, ?, ?)").bind(cid, args.id, author, args.body, now).run();
-  return { success: true, comment: { id: cid, ticket_id: args.id, author, body: args.body, created_at: now } };
+  return { success: true, id: cid };
 }
 
 export async function dbBulkAddComment(
