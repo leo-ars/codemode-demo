@@ -180,11 +180,35 @@ export class DemoAgent extends AIChatAgent<Cloudflare.Env, DemoState> {
   // tool calls and the TicketMCP DO is cold.
   waitForMcpConnections = { timeout: 30_000 };
 
-  async onStart() {
-    // addMcpServer requires this.name to be set (DO must be named).
-    // onStart() fires before the name is guaranteed, so we connect lazily
-    // in onChatMessage instead. Nothing to do here.
+  private mcpSessionId: string | null = null;
+
+  // Get or create a persistent MCP session ID via HTTP (like Rita's approach).
+  // This avoids the RPC binding entirely and the .name-not-set race condition.
+  private async getMcpSessionId(): Promise<string> {
+    if (this.mcpSessionId) return this.mcpSessionId;
+
+    const stored = await this.ctx.storage.get<string>("mcp-session-id");
+    if (stored) { this.mcpSessionId = stored; return stored; }
+
+    const mcpUrl = `${this.env.ORIGIN}/mcp`;
+    const response = await fetch(mcpUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {
+        protocolVersion: "2024-11-05", capabilities: {},
+        clientInfo: { name: "demo-mcp-agent", version: "1.0" },
+      }}),
+    });
+
+    const sessionId = response.headers.get("mcp-session-id");
+    if (!sessionId) throw new Error("Failed to get MCP session ID from /mcp");
+
+    this.mcpSessionId = sessionId;
+    await this.ctx.storage.put("mcp-session-id", sessionId);
+    return sessionId;
   }
+
+  async onStart() {}
 
   async onChatMessage(
     onFinish: Parameters<AIChatAgent["onChatMessage"]>[0],
@@ -306,33 +330,15 @@ When creating tickets, confirm what was created with the ticket ID.`;
     };
 
     if (mode === "mcp") {
-      // Connect lazily — addMcpServer needs this.name which is only guaranteed
-      // after a named fetch() has completed (not always in onStart on cold RPC wake).
-      if (Object.keys(this.mcp.getAITools()).length === 0) {
-        try {
-          await this.addMcpServer("tickets", this.env.TICKET_MCP);
-        } catch {
-          // TicketMCP may be cold — its onStart races with the RPC wake-up.
-          // Wait briefly and retry once.
-          await new Promise(r => setTimeout(r, 1500));
-          try {
-            await this.addMcpServer("tickets", this.env.TICKET_MCP);
-          } catch { /* handled below */ }
-        }
-      }
+      // Connect via HTTP MCP (like Rita's approach) — avoids the RPC binding
+      // entirely and the .name-not-set race condition on cold DO wake-ups.
+      const sessionId = await this.getMcpSessionId();
+      await this.addMcpServer("tickets", `${this.env.ORIGIN}/mcp`, {
+        transport: { type: "streamable-http", headers: { "mcp-session-id": sessionId } },
+      });
+      await this.setState({ ...this.state, mcpConnected: true });
 
       const mcpTools = this.mcp.getAITools();
-
-      // If still no tools after retry, stream a fixed warm-up message instead
-      // of a raw 503 — prevents the model from hallucinating a recovery plan.
-      if (Object.keys(mcpTools).length === 0) {
-        return streamText({
-          model, messages: modelMessages,
-          system: `Respond with exactly this message and nothing else:
-"The MCP server is warming up after a cold start. Please send your message again in a few seconds."`,
-          onFinish: wrappedOnFinish, abortSignal: options?.abortSignal,
-        }).toUIMessageStreamResponse();
-      }
 
       return streamText({
         model, system: systemPrompt, messages: modelMessages,
@@ -420,6 +426,10 @@ codemode.list_tickets({})`;
       const db = this.name === "demo-codemode" ? this.env.DB_CODE : this.env.DB;
       await resetDb(db);
       await this.saveMessages([]);
+      // Clear stored MCP session so next message gets a fresh connection
+      this.mcpSessionId = null;
+      await this.ctx.storage.delete("mcp-session-id");
+      await this.removeMcpServer("tickets").catch(() => {});
       await this.setState({
         ...this.state,
         mcpConnected:        false,
