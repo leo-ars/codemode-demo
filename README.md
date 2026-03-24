@@ -4,6 +4,8 @@ A side-by-side comparison of two AI agent tool-calling strategies built on Cloud
 
 **Live Demo:** [https://codemode-demo.leoarsenin.workers.dev](https://codemode-demo.leoarsenin.workers.dev)
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/leo-ars/codemode-demo)
+
 Inspired by [Rita Kozlov's MCP Night demo](https://github.com/rita3ko/mcp-demo-night) and the Cloudflare blog posts on [MCP + Codemode](https://blog.cloudflare.com/code-mode-mcp/) and [Codemode](https://blog.cloudflare.com/code-mode/).
 
 ---
